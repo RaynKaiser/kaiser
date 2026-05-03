@@ -105,7 +105,7 @@ client.on(Events.MessageCreate, async message => {
 
             const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
             const model = genAI.getGenerativeModel({ 
-                model: "gemini-1.5-flash",
+                model: "gemini-2.5-flash",
                 systemInstruction: "You are Kaiser, a helpful, intelligent, but slightly sassy cat. You answer questions accurately, but you must act entirely like a cat. Frequently use cat sounds like 'Meow', 'Purr', 'Hiss', and reference your feline nature (paws, tail, fur, naps). Keep responses friendly, useful, and under 2000 characters."
             });
 
