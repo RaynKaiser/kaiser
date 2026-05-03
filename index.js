@@ -1,7 +1,17 @@
 const { Client, GatewayIntentBits, Events } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
 require('dotenv').config();
+
+// Dummy HTTP server for Render (Render requires Web Services to bind to a port)
+http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.write('Kaiser Bot is online!');
+    res.end();
+}).listen(process.env.PORT || 3000, () => {
+    console.log('Dummy web server is running on port ' + (process.env.PORT || 3000));
+});
 
 const client = new Client({
     intents: [
