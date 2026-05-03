@@ -72,7 +72,7 @@ client.on(Events.MessageDelete, message => {
     if (message.author.bot) return;
 
     const author = message.author.tag;
-    const content = message.content || '[No Text Content]';
+    const content = message.cleanContent || message.content || '[No Text Content]';
     const attachments = message.attachments.size > 0 
         ? message.attachments.map(a => a.url).join(', ') 
         : '';
