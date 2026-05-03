@@ -84,4 +84,42 @@ client.on(Events.MessageDelete, message => {
     writeLog(logStr);
 });
 
+// Chat Bot (Kaiser the Cat) Logic
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+
+client.on(Events.MessageCreate, async message => {
+    // Ignore bots
+    if (message.author.bot) return;
+
+    // Only respond if the bot is mentioned
+    if (message.mentions.has(client.user)) {
+        if (!process.env.GEMINI_API_KEY) {
+            return message.reply("*angry meow* The developer forgot to give me my Gemini API key in the .env file!");
+        }
+
+        const userPrompt = message.content.replace(`<@${client.user.id}>`, '').trim();
+        
+        try {
+            // Show typing indicator in Discord
+            await message.channel.sendTyping();
+
+            const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+            const model = genAI.getGenerativeModel({ 
+                model: "gemini-1.5-flash",
+                systemInstruction: "You are Kaiser, a helpful, intelligent, but slightly sassy cat. You answer questions accurately, but you must act entirely like a cat. Frequently use cat sounds like 'Meow', 'Purr', 'Hiss', and reference your feline nature (paws, tail, fur, naps). Keep responses friendly, useful, and under 2000 characters."
+            });
+
+            // If they just pinged the bot without text, default to a greeting
+            const finalPrompt = userPrompt || "Hello Kaiser!";
+            const result = await model.generateContent(finalPrompt);
+            const responseText = result.response.text();
+
+            await message.reply(responseText);
+        } catch (error) {
+            console.error("AI Generation Error:", error);
+            await message.reply("*sad meow* I threw up a hairball and forgot what I was doing (API Error).");
+        }
+    }
+});
+
 client.login(process.env.DISCORD_TOKEN);
