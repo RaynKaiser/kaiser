@@ -15,8 +15,10 @@ const client = new Client({
 const logFile = path.join(__dirname, 'bot_logs.txt');
 
 async function writeLog(message) {
-    const timestamp = new Date().toLocaleString();
+    const now = new Date();
+    const timestamp = now.toLocaleString();
     const logMessage = `[${timestamp}] ${message}\n`;
+    
     console.log(logMessage.trim());
     fs.appendFileSync(logFile, logMessage);
 
@@ -25,7 +27,9 @@ async function writeLog(message) {
         try {
             const channel = await client.channels.fetch(process.env.LOG_CHANNEL_ID);
             if (channel && channel.isTextBased()) {
-                await channel.send(`\`[${timestamp}]\` ${message}`);
+                const unixTime = Math.floor(now.getTime() / 1000);
+                // <t:UNIX:F> creates a full date/time string that adapts to the reader's local timezone in Discord!
+                await channel.send(`**<t:${unixTime}:f>** ⸺ ${message}`);
             }
         } catch (error) {
             console.error('Error sending log to Discord channel:', error);
