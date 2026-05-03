@@ -68,9 +68,6 @@ client.on(Events.MessageDelete, message => {
         return;
     }
 
-    // Ignore bot messages if desired
-    if (message.author.bot) return;
-
     const author = message.author.tag;
     const content = message.cleanContent || message.content || '[No Text Content]';
     const attachments = message.attachments.size > 0 
