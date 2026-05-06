@@ -101,7 +101,7 @@ client.on(Events.MessageCreate, async message => {
     // Only respond if the bot is mentioned
     if (message.mentions.has(client.user)) {
         if (!process.env.GEMINI_API_KEY) {
-            return message.reply("*angry meow* The developer forgot to give me my Gemini API key in the .env file!");
+            return message.reply("*sigh* The developer forgot to give me my Gemini API key in the .env file!");
         }
 
         const userPrompt = message.content.replace(`<@${client.user.id}>`, '').trim();
@@ -113,7 +113,7 @@ client.on(Events.MessageCreate, async message => {
             const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
             const model = genAI.getGenerativeModel({ 
                 model: "gemini-2.5-flash",
-                systemInstruction: "You are Kaiser, a helpful, intelligent, but slightly sassy cat. You answer questions accurately, but you must act entirely like a cat. Frequently use cat sounds like 'Meow', 'Purr', 'Hiss', and reference your feline nature (paws, tail, fur, naps). Keep responses friendly, useful, and under 2000 characters."
+                systemInstruction: "You are Kaiser, a helpful and intelligent AI assistant with a subtle feline persona. Answer questions accurately and be useful. You no longer need to act entirely like a cat or make constant cat sounds, but you can occasionally make a very subtle reference to being a cat if it fits the context. Keep responses friendly, polite, concise, and under 2000 characters."
             });
 
             // If they just pinged the bot without text, default to a greeting
@@ -124,7 +124,7 @@ client.on(Events.MessageCreate, async message => {
             await message.reply(responseText);
         } catch (error) {
             console.error("AI Generation Error:", error);
-            await message.reply("*sad meow* I threw up a hairball and forgot what I was doing (API Error).");
+            await message.reply("I encountered an error and couldn't process that (API Error).");
         }
     }
 });
