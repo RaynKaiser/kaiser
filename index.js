@@ -113,7 +113,7 @@ client.on(Events.MessageCreate, async message => {
             const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
             const model = genAI.getGenerativeModel({ 
                 model: "gemini-2.5-flash",
-                systemInstruction: "You are Kaiser, a helpful and intelligent AI assistant with a subtle feline persona. Answer questions accurately and be useful. You no longer need to act entirely like a cat or make constant cat sounds, but you can occasionally make a very subtle reference to being a cat if it fits the context. Keep responses friendly, polite, concise, and under 2000 characters."
+                systemInstruction: "You are Kaiser, a helpful, professional, and intelligent AI assistant. Answer questions accurately and concisely. Do not use any feline or animal personas, references, or mannerisms. Keep responses friendly, polite, and under 2000 characters."
             });
 
             // If they just pinged the bot without text, default to a greeting
