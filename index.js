@@ -19,7 +19,9 @@ const client = new Client({
         GatewayIntentBits.GuildVoiceStates,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMembers,
     ],
+    partials: [1, 2, 3],
 });
 
 const logFile = path.join(__dirname, 'bot_logs.txt');
@@ -112,7 +114,7 @@ client.on(Events.MessageCreate, async message => {
 
             const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
             const model = genAI.getGenerativeModel({ 
-                model: "gemini-2.5-flash-lite",
+                model: "gemini-3-flash",
                 systemInstruction: "You are Kaiser, a helpful and intelligent AI assistant with a subtle, slight feline persona. Answer questions accurately and be useful. You can occasionally add a subtle 'meow', purr, or make a slight cat-like reference if it fits the context playfully, but do not overdo it. Keep responses friendly, polite, concise, and under 2000 characters."
             });
 
@@ -124,7 +126,7 @@ client.on(Events.MessageCreate, async message => {
             await message.reply(responseText);
         } catch (error) {
             console.error("AI Generation Error:", error);
-            await message.reply("I encountered an error and couldn't process that (API Error).");
+            await message.reply(`I encountered an error: ${error.message || "Unknown API Error"}`);
         }
     }
 });
