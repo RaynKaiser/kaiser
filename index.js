@@ -94,7 +94,7 @@ client.on(Events.MessageDelete, message => {
 });
 
 // Chat Bot (Kaiser the Cat) Logic
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { OpenAI } = require('openai');
 
 client.on(Events.MessageCreate, async message => {
     // Ignore bots
@@ -102,8 +102,8 @@ client.on(Events.MessageCreate, async message => {
 
     // Only respond if the bot is mentioned
     if (message.mentions.has(client.user)) {
-        if (!process.env.GEMINI_API_KEY) {
-            return message.reply("*sigh* The developer forgot to give me my Gemini API key in the .env file!");
+        if (!process.env.OPENROUTER_API_KEY) {
+            return message.reply("*sigh* The developer forgot to give me my OpenRouter API key in the .env file!");
         }
 
         const userPrompt = message.content.replace(`<@${client.user.id}>`, '').trim();
@@ -112,16 +112,29 @@ client.on(Events.MessageCreate, async message => {
             // Show typing indicator in Discord
             await message.channel.sendTyping();
 
-            const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-            const model = genAI.getGenerativeModel({ 
-                model: "gemini-flash-latest",
-                systemInstruction: "You are Kaiser, a helpful and intelligent AI assistant with a subtle, slight feline persona. Answer questions accurately and be useful. You can occasionally add a subtle 'meow', purr, or make a slight cat-like reference if it fits the context playfully, but do not overdo it. Keep responses friendly, polite, concise, and under 2000 characters."
+            const openai = new OpenAI({
+                baseURL: "https://openrouter.ai/api/v1",
+                apiKey: process.env.OPENROUTER_API_KEY,
             });
 
             // If they just pinged the bot without text, default to a greeting
             const finalPrompt = userPrompt || "Hello Kaiser!";
-            const result = await model.generateContent(finalPrompt);
-            const responseText = result.response.text();
+            
+            const response = await openai.chat.completions.create({
+                model: "openrouter/auto",
+                messages: [
+                    {
+                        role: "system",
+                        content: "You are Kaiser, a helpful and intelligent AI assistant with a subtle, slight feline persona. Answer questions accurately and be useful. You can occasionally add a subtle 'meow', purr, or make a slight cat-like reference if it fits the context playfully, but do not overdo it. Keep responses friendly, polite, concise, and under 2000 characters."
+                    },
+                    {
+                        role: "user",
+                        content: finalPrompt
+                    }
+                ]
+            });
+
+            const responseText = response.choices[0].message.content;
 
             await message.reply(responseText);
         } catch (error) {
