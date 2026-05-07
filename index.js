@@ -30,7 +30,7 @@ async function writeLog(message) {
     const now = new Date();
     const timestamp = now.toLocaleString();
     const logMessage = `[${timestamp}] ${message}\n`;
-    
+
     console.log(logMessage.trim());
     fs.appendFileSync(logFile, logMessage);
 
@@ -82,8 +82,8 @@ client.on(Events.MessageDelete, message => {
 
     const author = message.author.tag;
     const content = message.cleanContent || message.content || '[No Text Content]';
-    const attachments = message.attachments.size > 0 
-        ? message.attachments.map(a => a.url).join(', ') 
+    const attachments = message.attachments.size > 0
+        ? message.attachments.map(a => a.url).join(', ')
         : '';
     const channel = message.channel.name;
 
@@ -107,14 +107,14 @@ client.on(Events.MessageCreate, async message => {
         }
 
         const userPrompt = message.content.replace(`<@${client.user.id}>`, '').trim();
-        
+
         try {
             // Show typing indicator in Discord
             await message.channel.sendTyping();
 
             const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-            const model = genAI.getGenerativeModel({ 
-                model: "gemini-flash-latest",
+            const model = genAI.getGenerativeModel({
+                model: "gemini-2.5-flash",
                 systemInstruction: "You are Kaiser, a helpful and intelligent AI assistant with a subtle, slight feline persona. Answer questions accurately and be useful. You can occasionally add a subtle 'meow', purr, or make a slight cat-like reference if it fits the context playfully, but do not overdo it. Keep responses friendly, polite, concise, and under 2000 characters."
             });
 
