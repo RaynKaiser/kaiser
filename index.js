@@ -144,6 +144,10 @@ client.on(Events.InteractionCreate, async interaction => {
                         id: user.id, // The user who opened the ticket
                         allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory],
                     },
+                    {
+                        id: client.user.id, // The bot itself
+                        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory],
+                    },
                 ],
             });
 
@@ -166,7 +170,8 @@ client.on(Events.InteractionCreate, async interaction => {
             await interaction.reply({ content: `Your ticket has been created: <#${ticketChannel.id}>`, ephemeral: true });
         } catch (error) {
             console.error('Error creating ticket channel:', error);
-            await interaction.reply({ content: 'There was an error creating your ticket. Please contact an administrator.', ephemeral: true });
+            if (typeof writeLog === 'function') writeLog(`[ERROR] Ticket creation failed: ${error.message}`);
+            await interaction.reply({ content: `There was an error creating your ticket: **${error.message}**. Please make sure Kaiser has the "Manage Channels" permission!`, ephemeral: true });
         }
     }
 
