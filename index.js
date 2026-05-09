@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Events } = require('discord.js');
+const { Client, GatewayIntentBits, Events, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ChannelType, PermissionsBitField } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
@@ -93,48 +93,88 @@ client.on(Events.MessageDelete, message => {
     writeLog(logStr);
 });
 
-
-
-// Rock Paper Scissors Game
-client.on(Events.MessageCreate, message => {
-    // Ignore bots
+// --- Ticket System Setup ---
+client.on(Events.MessageCreate, async message => {
     if (message.author.bot) return;
 
-    const prefix = '!rps';
-    if (message.content.toLowerCase().startsWith(prefix)) {
-        const args = message.content.slice(prefix.length).trim().split(/ +/);
-        const userChoice = args[0]?.toLowerCase();
+    if (message.content === '!setuptickets' && message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+        const embed = new EmbedBuilder()
+            .setTitle('🎫 Support Tickets')
+            .setDescription('Click the button below to open a private ticket with the moderation team.')
+            .setColor('#2F3136');
 
-        const validChoices = ['rock', 'paper', 'scissors', 'scissor'];
-        
-        if (!userChoice || !validChoices.includes(userChoice)) {
-            return message.reply("Please choose rock, paper, or scissors! Example: `!rps rock`");
+        const button = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('create_ticket')
+                    .setLabel('Create Ticket')
+                    .setStyle(ButtonStyle.Primary)
+                    .setEmoji('📩')
+            );
+
+        await message.channel.send({ embeds: [embed], components: [button] });
+        await message.delete().catch(() => {});
+    }
+});
+
+// --- Ticket System Interaction ---
+client.on(Events.InteractionCreate, async interaction => {
+    if (!interaction.isButton()) return;
+
+    if (interaction.customId === 'create_ticket') {
+        const guild = interaction.guild;
+        const user = interaction.user;
+
+        // Check if user already has a ticket
+        const existingChannel = guild.channels.cache.find(c => c.name === `ticket-${user.username.toLowerCase()}`);
+        if (existingChannel) {
+            return interaction.reply({ content: `You already have an open ticket: <#${existingChannel.id}>`, ephemeral: true });
         }
 
-        const normalizedUserChoice = userChoice === 'scissor' ? 'scissors' : userChoice;
-        const choices = ['rock', 'paper', 'scissors'];
-        const botChoice = choices[Math.floor(Math.random() * choices.length)];
+        try {
+            const ticketChannel = await guild.channels.create({
+                name: `ticket-${user.username}`,
+                type: ChannelType.GuildText,
+                permissionOverwrites: [
+                    {
+                        id: guild.id, // @everyone
+                        deny: [PermissionsBitField.Flags.ViewChannel],
+                    },
+                    {
+                        id: user.id, // The user who opened the ticket
+                        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory],
+                    },
+                ],
+            });
 
-        let result = "";
-        if (normalizedUserChoice === botChoice) {
-            result = "It's a tie!";
-        } else if (
-            (normalizedUserChoice === 'rock' && botChoice === 'scissors') ||
-            (normalizedUserChoice === 'paper' && botChoice === 'rock') ||
-            (normalizedUserChoice === 'scissors' && botChoice === 'paper')
-        ) {
-            result = "You win!";
-        } else {
-            result = "I win!";
+            const embed = new EmbedBuilder()
+                .setTitle(`Ticket for ${user.username}`)
+                .setDescription('Please describe your issue here. A moderator will be with you shortly.\nTo close this ticket, click the button below.')
+                .setColor('#2F3136');
+
+            const closeButton = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('close_ticket')
+                        .setLabel('Close Ticket')
+                        .setStyle(ButtonStyle.Danger)
+                        .setEmoji('🔒')
+                );
+
+            await ticketChannel.send({ content: `<@${user.id}>`, embeds: [embed], components: [closeButton] });
+
+            await interaction.reply({ content: `Your ticket has been created: <#${ticketChannel.id}>`, ephemeral: true });
+        } catch (error) {
+            console.error('Error creating ticket channel:', error);
+            await interaction.reply({ content: 'There was an error creating your ticket. Please contact an administrator.', ephemeral: true });
         }
+    }
 
-        const emojis = {
-            rock: '🪨',
-            paper: '📄',
-            scissors: '✂️'
-        };
-
-        return message.reply(`You chose ${emojis[normalizedUserChoice]} **${normalizedUserChoice}**.\nI chose ${emojis[botChoice]} **${botChoice}**.\n\n**${result}**`);
+    if (interaction.customId === 'close_ticket') {
+        await interaction.reply('Ticket will be closed in 5 seconds...');
+        setTimeout(() => {
+            interaction.channel.delete().catch(console.error);
+        }, 5000);
     }
 });
 
