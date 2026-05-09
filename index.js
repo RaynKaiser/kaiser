@@ -25,6 +25,22 @@ const client = new Client({
 });
 
 const logFile = path.join(__dirname, 'bot_logs.txt');
+const configPath = path.join(__dirname, 'config.json');
+
+function loadConfig() {
+    if (fs.existsSync(configPath)) {
+        try {
+            return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        } catch (e) {
+            console.error("Error reading config.json:", e);
+        }
+    }
+    return {};
+}
+
+function saveConfig(config) {
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 4));
+}
 
 async function writeLog(message) {
     const now = new Date();
@@ -115,6 +131,17 @@ client.on(Events.MessageCreate, async message => {
         await message.channel.send({ embeds: [embed], components: [button] });
         await message.delete().catch(() => {});
     }
+
+    if (message.content.startsWith('!setautorole') && message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+        const role = message.mentions.roles.first();
+        if (!role) return message.reply("Please mention a role! Usage: `!setautorole @RoleName`");
+
+        const config = loadConfig();
+        config.autoRoleId = role.id;
+        saveConfig(config);
+
+        return message.reply(`✅ Auto-role set to **${role.name}**. New members will automatically receive this role upon joining.\n*Note: Make sure my Kaiser bot role is placed higher than this role in your Server Settings!*`);
+    }
 });
 
 // --- Ticket System Interaction ---
@@ -180,6 +207,23 @@ client.on(Events.InteractionCreate, async interaction => {
         setTimeout(() => {
             interaction.channel.delete().catch(console.error);
         }, 5000);
+    }
+});
+
+// --- Auto-Role on Join ---
+client.on(Events.GuildMemberAdd, async member => {
+    const config = loadConfig();
+    const autoRoleId = config.autoRoleId;
+    if (autoRoleId) {
+        try {
+            const role = member.guild.roles.cache.get(autoRoleId) || await member.guild.roles.fetch(autoRoleId);
+            if (role) {
+                await member.roles.add(role);
+                if (typeof writeLog === 'function') writeLog(`[ROLE] ✅ Assigned auto-role ${role.name} to ${member.user.tag}`);
+            }
+        } catch (error) {
+            console.error(`Failed to assign auto-role to ${member.user.tag}:`, error);
+        }
     }
 });
 
