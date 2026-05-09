@@ -95,4 +95,47 @@ client.on(Events.MessageDelete, message => {
 
 
 
+// Rock Paper Scissors Game
+client.on(Events.MessageCreate, message => {
+    // Ignore bots
+    if (message.author.bot) return;
+
+    const prefix = '!rps';
+    if (message.content.toLowerCase().startsWith(prefix)) {
+        const args = message.content.slice(prefix.length).trim().split(/ +/);
+        const userChoice = args[0]?.toLowerCase();
+
+        const validChoices = ['rock', 'paper', 'scissors', 'scissor'];
+        
+        if (!userChoice || !validChoices.includes(userChoice)) {
+            return message.reply("Please choose rock, paper, or scissors! Example: `!rps rock`");
+        }
+
+        const normalizedUserChoice = userChoice === 'scissor' ? 'scissors' : userChoice;
+        const choices = ['rock', 'paper', 'scissors'];
+        const botChoice = choices[Math.floor(Math.random() * choices.length)];
+
+        let result = "";
+        if (normalizedUserChoice === botChoice) {
+            result = "It's a tie!";
+        } else if (
+            (normalizedUserChoice === 'rock' && botChoice === 'scissors') ||
+            (normalizedUserChoice === 'paper' && botChoice === 'rock') ||
+            (normalizedUserChoice === 'scissors' && botChoice === 'paper')
+        ) {
+            result = "You win!";
+        } else {
+            result = "I win!";
+        }
+
+        const emojis = {
+            rock: '🪨',
+            paper: '📄',
+            scissors: '✂️'
+        };
+
+        return message.reply(`You chose ${emojis[normalizedUserChoice]} **${normalizedUserChoice}**.\nI chose ${emojis[botChoice]} **${botChoice}**.\n\n**${result}**`);
+    }
+});
+
 client.login(process.env.DISCORD_TOKEN);
