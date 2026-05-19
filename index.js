@@ -110,7 +110,6 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
                         .setColor(embedColor)
                         .setAuthor({ name: user, iconURL: member.user.displayAvatarURL({ dynamic: true }) })
                         .setDescription(embedDesc)
-                        .setFooter({ text: `User ID: ${member.id}` })
                         .setTimestamp();
                     
                     if (fields.length > 0) embed.addFields(fields);
@@ -152,7 +151,6 @@ client.on(Events.MessageDelete, async message => {
                     .setColor('#E74C3C') // Red for deletion
                     .setAuthor({ name: author, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
                     .setDescription(`**Message sent by <@${message.author.id}> deleted in <#${message.channelId}>**\n\n${content}`)
-                    .setFooter({ text: `Author: ${message.author.id} | Message ID: ${message.id}` })
                     .setTimestamp();
 
                 if (attachments) {
@@ -306,7 +304,6 @@ client.on(Events.GuildMemberAdd, async member => {
                         { name: '📅 Account Created', value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`, inline: true },
                         { name: '👥 Member Count', value: `We now have **${member.guild.memberCount}** members.`, inline: true }
                     )
-                    .setFooter({ text: `User ID: ${member.user.id}` })
                     .setTimestamp();
                 
                 await channel.send({ embeds: [joinEmbed] });
@@ -333,7 +330,6 @@ client.on(Events.GuildMemberRemove, async member => {
                     .addFields(
                         { name: '👥 Member Count', value: `We are down to **${member.guild.memberCount}** members.`, inline: true }
                     )
-                    .setFooter({ text: `User ID: ${member.user.id}` })
                     .setTimestamp();
                 
                 await channel.send({ embeds: [leaveEmbed] });
