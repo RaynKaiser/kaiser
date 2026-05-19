@@ -142,6 +142,7 @@ client.on(Events.MessageCreate, async message => {
 
         return message.reply(`✅ Auto-role set to **${role.name}**. New members will automatically receive this role upon joining.\n*Note: Make sure my Kaiser bot role is placed higher than this role in your Server Settings!*`);
     }
+
 });
 
 // --- Ticket System Interaction ---
@@ -210,9 +211,11 @@ client.on(Events.InteractionCreate, async interaction => {
     }
 });
 
-// --- Auto-Role on Join ---
+// --- Auto-Role & Welcome on Join ---
 client.on(Events.GuildMemberAdd, async member => {
     const config = loadConfig();
+    
+    // Auto-role
     const autoRoleId = config.autoRoleId;
     if (autoRoleId) {
         try {
@@ -224,6 +227,52 @@ client.on(Events.GuildMemberAdd, async member => {
         } catch (error) {
             console.error(`Failed to assign auto-role to ${member.user.tag}:`, error);
         }
+    }
+
+    // Audit Log: Member Join Embed
+    try {
+        if (typeof writeLog === 'function') writeLog(`[JOIN] 📥 ${member.user.tag} joined the server.`);
+        
+        if (process.env.LOG_CHANNEL_ID) {
+            const channel = await client.channels.fetch(process.env.LOG_CHANNEL_ID);
+            if (channel && channel.isTextBased()) {
+                const joinEmbed = new EmbedBuilder()
+                    .setColor('#00FF00')
+                    .setAuthor({ name: `${member.user.displayName} Joined`, iconURL: member.user.displayAvatarURL({ dynamic: true }) })
+                    .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
+                    .setDescription(`**${member.user.tag}** (<@${member.user.id}>) has joined the server.`)
+                    .setFooter({ text: `User ID: ${member.user.id}` })
+                    .setTimestamp();
+                
+                await channel.send({ embeds: [joinEmbed] });
+            }
+        }
+    } catch (error) {
+        console.error('Error sending join audit log:', error);
+    }
+});
+
+// --- Leave Message (Audit Log) ---
+client.on(Events.GuildMemberRemove, async member => {
+    try {
+        if (typeof writeLog === 'function') writeLog(`[LEAVE] 📤 ${member.user.tag} left the server.`);
+
+        if (process.env.LOG_CHANNEL_ID) {
+            const channel = await client.channels.fetch(process.env.LOG_CHANNEL_ID);
+            if (channel && channel.isTextBased()) {
+                const leaveEmbed = new EmbedBuilder()
+                    .setColor('#FF0000')
+                    .setAuthor({ name: `${member.user.displayName} Left`, iconURL: member.user.displayAvatarURL({ dynamic: true }) })
+                    .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
+                    .setDescription(`**${member.user.tag}** (<@${member.user.id}>) has left the server.`)
+                    .setFooter({ text: `User ID: ${member.user.id}` })
+                    .setTimestamp();
+                
+                await channel.send({ embeds: [leaveEmbed] });
+            }
+        }
+    } catch (error) {
+        console.error('Error sending leave audit log:', error);
     }
 });
 
