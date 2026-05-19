@@ -116,8 +116,9 @@ client.on(Events.MessageCreate, async message => {
     if (message.content === '!setuptickets' && message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
         const embed = new EmbedBuilder()
             .setTitle('🎫 Support Tickets')
-            .setDescription('Click the button below to open a private ticket with the moderation team.')
-            .setColor('#2F3136');
+            .setDescription('Need help? Click the button below to open a private ticket with the moderation team.\n\nOur team will assist you as soon as possible.')
+            .setColor('#5865F2')
+            .setFooter({ text: 'Kaiser Support System', iconURL: client.user.displayAvatarURL() });
 
         const button = new ActionRowBuilder()
             .addComponents(
@@ -180,9 +181,11 @@ client.on(Events.InteractionCreate, async interaction => {
             });
 
             const embed = new EmbedBuilder()
-                .setTitle(`Ticket for ${user.username}`)
-                .setDescription('Please describe your issue here. A moderator will be with you shortly.\nTo close this ticket, click the button below.')
-                .setColor('#2F3136');
+                .setTitle(`🎫 Ticket: ${user.username}`)
+                .setDescription(`Welcome <@${user.id}>!\n\nPlease describe your issue or question in detail here. A moderator will review it and assist you shortly.\n\n*To close this ticket, click the button below.*`)
+                .setColor('#5865F2')
+                .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+                .setTimestamp();
 
             const closeButton = new ActionRowBuilder()
                 .addComponents(
@@ -237,10 +240,14 @@ client.on(Events.GuildMemberAdd, async member => {
             const channel = await client.channels.fetch(process.env.LOG_CHANNEL_ID);
             if (channel && channel.isTextBased()) {
                 const joinEmbed = new EmbedBuilder()
-                    .setColor('#00FF00')
-                    .setAuthor({ name: `${member.user.displayName} Joined`, iconURL: member.user.displayAvatarURL({ dynamic: true }) })
+                    .setColor('#2ECC71')
+                    .setAuthor({ name: `${member.user.displayName} joined the server!`, iconURL: member.user.displayAvatarURL({ dynamic: true }) })
                     .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
-                    .setDescription(`**${member.user.tag}** (<@${member.user.id}>) has joined the server.`)
+                    .setDescription(`Welcome **${member.user.tag}** (<@${member.user.id}>) to the server!`)
+                    .addFields(
+                        { name: '📅 Account Created', value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`, inline: true },
+                        { name: '👥 Member Count', value: `We now have **${member.guild.memberCount}** members.`, inline: true }
+                    )
                     .setFooter({ text: `User ID: ${member.user.id}` })
                     .setTimestamp();
                 
@@ -261,10 +268,13 @@ client.on(Events.GuildMemberRemove, async member => {
             const channel = await client.channels.fetch(process.env.LOG_CHANNEL_ID);
             if (channel && channel.isTextBased()) {
                 const leaveEmbed = new EmbedBuilder()
-                    .setColor('#FF0000')
-                    .setAuthor({ name: `${member.user.displayName} Left`, iconURL: member.user.displayAvatarURL({ dynamic: true }) })
+                    .setColor('#E74C3C')
+                    .setAuthor({ name: `${member.user.displayName} left the server.`, iconURL: member.user.displayAvatarURL({ dynamic: true }) })
                     .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
-                    .setDescription(`**${member.user.tag}** (<@${member.user.id}>) has left the server.`)
+                    .setDescription(`**${member.user.tag}** (<@${member.user.id}>) has left us.`)
+                    .addFields(
+                        { name: '👥 Member Count', value: `We are down to **${member.guild.memberCount}** members.`, inline: true }
+                    )
                     .setFooter({ text: `User ID: ${member.user.id}` })
                     .setTimestamp();
                 
