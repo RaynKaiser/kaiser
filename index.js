@@ -42,7 +42,7 @@ function saveConfig(config) {
     fs.writeFileSync(configPath, JSON.stringify(config, null, 4));
 }
 
-async function writeLog(message) {
+async function writeLog(message, sendToDiscord = true) {
     const now = new Date();
     const timestamp = now.toLocaleString();
     const logMessage = `[${timestamp}] ${message}\n`;
@@ -51,7 +51,7 @@ async function writeLog(message) {
     fs.appendFileSync(logFile, logMessage);
 
     // Send to Discord log channel if configured
-    if (process.env.LOG_CHANNEL_ID) {
+    if (sendToDiscord && process.env.LOG_CHANNEL_ID) {
         try {
             const channel = await client.channels.fetch(process.env.LOG_CHANNEL_ID);
             if (channel && channel.isTextBased()) {
@@ -70,43 +70,101 @@ client.once(Events.ClientReady, readyClient => {
 });
 
 // Track voice channel joins, leaves, and switches
-client.on(Events.VoiceStateUpdate, (oldState, newState) => {
+client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     const member = newState.member || oldState.member;
     const user = member ? member.user.tag : 'Unknown User';
 
+    let logMsg = '';
+    let embedColor = '';
+    let embedDesc = '';
+    let fields = [];
+
     // Joined a voice channel
     if (!oldState.channelId && newState.channelId) {
-        writeLog(`[VOICE] 🎙️ ${user} JOINED voice channel: ${newState.channel.name}`);
+        logMsg = `[VOICE] 🎙️ ${user} JOINED voice channel: ${newState.channel.name}`;
+        embedColor = '#2ECC71'; // Green
+        embedDesc = `**${user}** joined voice channel <#${newState.channelId}>`;
     }
     // Left a voice channel
     else if (oldState.channelId && !newState.channelId) {
-        writeLog(`[VOICE] 🚪 ${user} LEFT voice channel: ${oldState.channel.name}`);
+        logMsg = `[VOICE] 🚪 ${user} LEFT voice channel: ${oldState.channel.name}`;
+        embedColor = '#E74C3C'; // Red
+        embedDesc = `**${user}** left voice channel <#${oldState.channelId}>`;
     }
     // Switched voice channels
     else if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
-        writeLog(`[VOICE] 🔀 ${user} MOVED from ${oldState.channel.name} to ${newState.channel.name}`);
+        logMsg = `[VOICE] 🔀 ${user} MOVED from ${oldState.channel.name} to ${newState.channel.name}`;
+        embedColor = '#3498DB'; // Blue
+        embedDesc = `**${user}** moved voice channels`;
+        fields.push({ name: 'From', value: `<#${oldState.channelId}>`, inline: true });
+        fields.push({ name: 'To', value: `<#${newState.channelId}>`, inline: true });
+    }
+
+    if (logMsg) {
+        writeLog(logMsg, false);
+        if (process.env.LOG_CHANNEL_ID && member) {
+            try {
+                const channel = await client.channels.fetch(process.env.LOG_CHANNEL_ID);
+                if (channel && channel.isTextBased()) {
+                    const embed = new EmbedBuilder()
+                        .setColor(embedColor)
+                        .setAuthor({ name: user, iconURL: member.user.displayAvatarURL({ dynamic: true }) })
+                        .setDescription(embedDesc)
+                        .setFooter({ text: `User ID: ${member.id}` })
+                        .setTimestamp();
+                    
+                    if (fields.length > 0) embed.addFields(fields);
+
+                    await channel.send({ embeds: [embed] });
+                }
+            } catch (error) {
+                console.error('Error sending voice embed:', error);
+            }
+        }
     }
 });
 
 // Track deleted messages
-client.on(Events.MessageDelete, message => {
+client.on(Events.MessageDelete, async message => {
     // Ignore partial messages where we don't have the content
     if (message.partial) {
-        writeLog(`[MESSAGE] 🗑️ A message was deleted in #${message.channel?.name || 'unknown'}, but its content could not be retrieved (was not cached).`);
+        writeLog(`[MESSAGE] 🗑️ A message was deleted in #${message.channel?.name || 'unknown'}, but its content could not be retrieved (was not cached).`, false);
         return;
     }
 
     const author = message.author.tag;
     const content = message.cleanContent || message.content || '[No Text Content]';
     const attachments = message.attachments.size > 0
-        ? message.attachments.map(a => a.url).join(', ')
+        ? message.attachments.map(a => a.url).join('\n')
         : '';
-    const channel = message.channel.name;
+    const channelName = message.channel.name;
 
-    let logStr = `[MESSAGE] 🗑️ Message DELETED in #${channel} by ${author}: "${content}"`;
-    if (attachments) logStr += ` | Attachments: ${attachments}`;
+    let logStr = `[MESSAGE] 🗑️ Message DELETED in #${channelName} by ${author}: "${content}"`;
+    if (attachments) logStr += ` | Attachments: ${attachments.replace(/\n/g, ', ')}`;
 
-    writeLog(logStr);
+    writeLog(logStr, false);
+
+    if (process.env.LOG_CHANNEL_ID) {
+        try {
+            const channel = await client.channels.fetch(process.env.LOG_CHANNEL_ID);
+            if (channel && channel.isTextBased()) {
+                const embed = new EmbedBuilder()
+                    .setColor('#E74C3C') // Red for deletion
+                    .setAuthor({ name: author, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
+                    .setDescription(`**Message sent by <@${message.author.id}> deleted in <#${message.channelId}>**\n\n${content}`)
+                    .setFooter({ text: `Author: ${message.author.id} | Message ID: ${message.id}` })
+                    .setTimestamp();
+
+                if (attachments) {
+                    embed.addFields({ name: 'Attachments', value: attachments });
+                }
+
+                await channel.send({ embeds: [embed] });
+            }
+        } catch (error) {
+            console.error('Error sending message delete embed:', error);
+        }
+    }
 });
 
 // --- Ticket System Setup ---
@@ -234,7 +292,7 @@ client.on(Events.GuildMemberAdd, async member => {
 
     // Audit Log: Member Join Embed
     try {
-        if (typeof writeLog === 'function') writeLog(`[JOIN] 📥 ${member.user.tag} joined the server.`);
+        if (typeof writeLog === 'function') writeLog(`[JOIN] 📥 ${member.user.tag} joined the server.`, false);
         
         if (process.env.LOG_CHANNEL_ID) {
             const channel = await client.channels.fetch(process.env.LOG_CHANNEL_ID);
@@ -262,7 +320,7 @@ client.on(Events.GuildMemberAdd, async member => {
 // --- Leave Message (Audit Log) ---
 client.on(Events.GuildMemberRemove, async member => {
     try {
-        if (typeof writeLog === 'function') writeLog(`[LEAVE] 📤 ${member.user.tag} left the server.`);
+        if (typeof writeLog === 'function') writeLog(`[LEAVE] 📤 ${member.user.tag} left the server.`, false);
 
         if (process.env.LOG_CHANNEL_ID) {
             const channel = await client.channels.fetch(process.env.LOG_CHANNEL_ID);
