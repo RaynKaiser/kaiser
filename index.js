@@ -72,7 +72,7 @@ client.once(Events.ClientReady, readyClient => {
 // Track voice channel joins, leaves, and switches
 client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     const member = newState.member || oldState.member;
-    const user = member ? member.user.tag : 'Unknown User';
+    const user = member ? member.user.username : 'Unknown User';
 
     let logMsg = '';
     let embedColor = '';
@@ -131,7 +131,7 @@ client.on(Events.MessageDelete, async message => {
         return;
     }
 
-    const author = message.author.tag;
+    const author = message.author.username;
     const content = message.cleanContent || message.content || '[No Text Content]';
     const attachments = message.attachments.size > 0
         ? message.attachments.map(a => a.url).join('\n')
@@ -274,23 +274,40 @@ client.on(Events.InteractionCreate, async interaction => {
 client.on(Events.GuildMemberAdd, async member => {
     const config = loadConfig();
     
-    // Auto-role
-    const autoRoleId = config.autoRoleId;
+    // Auto-role: Use config.json if set, otherwise fallback to .env
+    const autoRoleId = config.autoRoleId || process.env.AUTO_ROLE_ID;
     if (autoRoleId) {
         try {
             const role = member.guild.roles.cache.get(autoRoleId) || await member.guild.roles.fetch(autoRoleId);
             if (role) {
                 await member.roles.add(role);
-                if (typeof writeLog === 'function') writeLog(`[ROLE] ✅ Assigned auto-role ${role.name} to ${member.user.tag}`);
+                if (typeof writeLog === 'function') writeLog(`[ROLE] ✅ Assigned auto-role ${role.name} to ${member.user.username}`, false);
+
+                if (process.env.LOG_CHANNEL_ID) {
+                    try {
+                        const channel = await client.channels.fetch(process.env.LOG_CHANNEL_ID);
+                        if (channel && channel.isTextBased()) {
+                            const embed = new EmbedBuilder()
+                                .setColor('#2ECC71')
+                                .setAuthor({ name: member.user.username, iconURL: member.user.displayAvatarURL({ dynamic: true }) })
+                                .setDescription(`**${member.user.username}** was assigned auto-role <@&${role.id}>`)
+                                .setTimestamp();
+
+                            await channel.send({ embeds: [embed] });
+                        }
+                    } catch (err) {
+                        console.error('Error sending auto-role embed:', err);
+                    }
+                }
             }
         } catch (error) {
-            console.error(`Failed to assign auto-role to ${member.user.tag}:`, error);
+            console.error(`Failed to assign auto-role to ${member.user.username}:`, error);
         }
     }
 
     // Audit Log: Member Join Embed
     try {
-        if (typeof writeLog === 'function') writeLog(`[JOIN] 📥 ${member.user.tag} joined the server.`, false);
+        if (typeof writeLog === 'function') writeLog(`[JOIN] 📥 ${member.user.username} joined the server.`, false);
         
         if (process.env.LOG_CHANNEL_ID) {
             const channel = await client.channels.fetch(process.env.LOG_CHANNEL_ID);
@@ -299,7 +316,7 @@ client.on(Events.GuildMemberAdd, async member => {
                     .setColor('#2ECC71')
                     .setAuthor({ name: `${member.user.displayName} joined the server!`, iconURL: member.user.displayAvatarURL({ dynamic: true }) })
                     .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
-                    .setDescription(`Welcome **${member.user.tag}** (<@${member.user.id}>) to the server!`)
+                    .setDescription(`Welcome **${member.user.username}** ( <@${member.user.id}> ) to the server!`)
                     .addFields(
                         { name: '📅 Account Created', value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`, inline: true },
                         { name: '👥 Member Count', value: `We now have **${member.guild.memberCount}** members.`, inline: true }
@@ -317,7 +334,7 @@ client.on(Events.GuildMemberAdd, async member => {
 // --- Leave Message (Audit Log) ---
 client.on(Events.GuildMemberRemove, async member => {
     try {
-        if (typeof writeLog === 'function') writeLog(`[LEAVE] 📤 ${member.user.tag} left the server.`, false);
+        if (typeof writeLog === 'function') writeLog(`[LEAVE] 📤 ${member.user.username} left the server.`, false);
 
         if (process.env.LOG_CHANNEL_ID) {
             const channel = await client.channels.fetch(process.env.LOG_CHANNEL_ID);
@@ -326,7 +343,7 @@ client.on(Events.GuildMemberRemove, async member => {
                     .setColor('#E74C3C')
                     .setAuthor({ name: `${member.user.displayName} left the server.`, iconURL: member.user.displayAvatarURL({ dynamic: true }) })
                     .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
-                    .setDescription(`**${member.user.tag}** (<@${member.user.id}>) has left us.`)
+                    .setDescription(`**${member.user.username}** ( <@${member.user.id}> ) has left us.`)
                     .addFields(
                         { name: '👥 Member Count', value: `We are down to **${member.guild.memberCount}** members.`, inline: true }
                     )
