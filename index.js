@@ -55,9 +55,25 @@ async function writeLog(message, sendToDiscord = true) {
         try {
             const channel = await client.channels.fetch(process.env.LOG_CHANNEL_ID);
             if (channel && channel.isTextBased()) {
-                const unixTime = Math.floor(now.getTime() / 1000);
-                // <t:UNIX:F> creates a full date/time string that adapts to the reader's local timezone in Discord!
-                await channel.send(`**<t:${unixTime}:f>** ⸺ ${message}`);
+                let embedColor = '#5865F2'; // Blurple
+                if (message.includes('Ready!') || message.includes('✅')) {
+                    embedColor = '#2ECC71'; // Green
+                } else if (message.toLowerCase().includes('error') || message.toLowerCase().includes('failed')) {
+                    embedColor = '#E74C3C'; // Red
+                }
+
+                const embed = new EmbedBuilder()
+                    .setColor(embedColor)
+                    .setDescription(message)
+                    .setTimestamp();
+
+                if (client.user) {
+                    embed.setAuthor({ name: client.user.username, iconURL: client.user.displayAvatarURL({ dynamic: true }) });
+                } else {
+                    embed.setAuthor({ name: 'Kaiser System' });
+                }
+
+                await channel.send({ embeds: [embed] });
             }
         } catch (error) {
             console.error('Error sending log to Discord channel:', error);
@@ -66,7 +82,7 @@ async function writeLog(message, sendToDiscord = true) {
 }
 
 client.once(Events.ClientReady, readyClient => {
-    writeLog(`Ready! Logged in as ${readyClient.user.tag}`);
+    writeLog(`Ready! Logged in as ${readyClient.user.username}`);
 });
 
 // Track voice channel joins, leaves, and switches
