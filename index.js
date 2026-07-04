@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Events, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ChannelType, PermissionsBitField } = require('discord.js');
+const { Client, GatewayIntentBits, Events, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ChannelType, PermissionsBitField, AuditLogEvent } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
@@ -20,6 +20,7 @@ const client = new Client({
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildModeration,
     ],
     partials: [1, 2, 3],
 });
@@ -350,20 +351,63 @@ client.on(Events.GuildMemberAdd, async member => {
 // --- Leave Message (Audit Log) ---
 client.on(Events.GuildMemberRemove, async member => {
     try {
-        if (typeof writeLog === 'function') writeLog(`[LEAVE] 📤 ${member.user.username} left the server.`, false);
+        // Give the audit log a moment to be populated
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        let actionType = 'left';
+        let executor = null;
+        let reason = null;
+
+        // Try to fetch kick logs
+        const kickLogs = await member.guild.fetchAuditLogs({
+            limit: 1,
+            type: AuditLogEvent.MemberKick,
+        });
+        const kickLog = kickLogs.entries.first();
+
+        // Try to fetch ban logs
+        const banLogs = await member.guild.fetchAuditLogs({
+            limit: 1,
+            type: AuditLogEvent.MemberBanAdd,
+        });
+        const banLog = banLogs.entries.first();
+
+        // Check if the latest kick/ban is for this member and happened recently (within the last 5 seconds)
+        const now = Date.now();
+        if (kickLog && kickLog.target.id === member.id && (now - kickLog.createdTimestamp) < 5000) {
+            actionType = 'was kicked';
+            executor = kickLog.executor;
+            reason = kickLog.reason || 'No reason provided';
+        } else if (banLog && banLog.target.id === member.id && (now - banLog.createdTimestamp) < 5000) {
+            actionType = 'was banned';
+            executor = banLog.executor;
+            reason = banLog.reason || 'No reason provided';
+        }
+
+        const logMsg = executor 
+            ? `[LEAVE] 📤 ${member.user.username} ${actionType} by ${executor.username}. Reason: ${reason}`
+            : `[LEAVE] 📤 ${member.user.username} left the server.`;
+            
+        if (typeof writeLog === 'function') writeLog(logMsg, false);
 
         if (process.env.LOG_CHANNEL_ID) {
             const channel = await client.channels.fetch(process.env.LOG_CHANNEL_ID);
             if (channel && channel.isTextBased()) {
                 const leaveEmbed = new EmbedBuilder()
                     .setColor('#E74C3C')
-                    .setAuthor({ name: `${member.user.displayName} left the server.`, iconURL: member.user.displayAvatarURL({ dynamic: true }) })
+                    .setAuthor({ name: `${member.user.displayName} ${actionType}.`, iconURL: member.user.displayAvatarURL({ dynamic: true }) })
                     .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
-                    .setDescription(`**${member.user.username}** ( <@${member.user.id}> ) has left us.`)
-                    .addFields(
-                        { name: '👥 Member Count', value: `We are down to **${member.guild.memberCount}** members.`, inline: true }
-                    )
                     .setTimestamp();
+                    
+                if (executor) {
+                    leaveEmbed.setDescription(`**${member.user.username}** ( <@${member.user.id}> ) ${actionType} by <@${executor.id}>.\n**Reason:** ${reason}`);
+                } else {
+                    leaveEmbed.setDescription(`**${member.user.username}** ( <@${member.user.id}> ) has left us.`);
+                }
+
+                leaveEmbed.addFields(
+                    { name: '👥 Member Count', value: `We are down to **${member.guild.memberCount}** members.`, inline: true }
+                );
                 
                 await channel.send({ embeds: [leaveEmbed] });
             }
