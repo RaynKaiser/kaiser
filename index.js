@@ -345,7 +345,11 @@ client.on(Events.GuildMemberAdd, async member => {
             try {
                 const channel = await client.channels.fetch(channelId);
                 if (channel && channel.isTextBased()) {
-                    await channel.send({ embeds: [joinEmbed] });
+                    if (channelId === process.env.WELCOME_CHANNEL_ID) {
+                        await channel.send({ content: `Welcome to the server, <@${member.user.id}>!`, embeds: [joinEmbed] });
+                    } else {
+                        await channel.send({ embeds: [joinEmbed] });
+                    }
                 }
             } catch (err) {
                 console.error(`Error sending join message to channel ${channelId}:`, err);
