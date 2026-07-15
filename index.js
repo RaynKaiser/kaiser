@@ -326,22 +326,29 @@ client.on(Events.GuildMemberAdd, async member => {
     try {
         if (typeof writeLog === 'function') writeLog(`[JOIN] 📥 ${member.user.username} joined the server.`, false);
         
-        const welcomeChannelId = process.env.WELCOME_CHANNEL_ID || process.env.LOG_CHANNEL_ID;
-        if (welcomeChannelId) {
-            const channel = await client.channels.fetch(welcomeChannelId);
-            if (channel && channel.isTextBased()) {
-                const joinEmbed = new EmbedBuilder()
-                    .setColor('#2ECC71')
-                    .setAuthor({ name: `${member.user.displayName} joined the server!`, iconURL: member.user.displayAvatarURL({ dynamic: true }) })
-                    .setDescription(`Welcome **${member.user.username}** ( <@${member.user.id}> ) to the server!`)
-                    .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 512 }))
-                    .addFields(
-                        { name: '📅 Account Created', value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`, inline: true },
-                        { name: '🫂 Member Count', value: `We now have **${member.guild.memberCount}** members.`, inline: true }
-                    )
-                    .setTimestamp();
-                
-                await channel.send({ embeds: [joinEmbed] });
+        const joinEmbed = new EmbedBuilder()
+            .setColor('#2ECC71')
+            .setAuthor({ name: `${member.user.displayName} joined the server!`, iconURL: member.user.displayAvatarURL({ dynamic: true }) })
+            .setDescription(`Welcome **${member.user.username}** ( <@${member.user.id}> ) to the server!`)
+            .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 512 }))
+            .addFields(
+                { name: '📅 Account Created', value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`, inline: true },
+                { name: '🫂 Member Count', value: `We now have **${member.guild.memberCount}** members.`, inline: true }
+            )
+            .setTimestamp();
+
+        const channelIds = new Set();
+        if (process.env.WELCOME_CHANNEL_ID) channelIds.add(process.env.WELCOME_CHANNEL_ID);
+        if (process.env.LOG_CHANNEL_ID) channelIds.add(process.env.LOG_CHANNEL_ID);
+
+        for (const channelId of channelIds) {
+            try {
+                const channel = await client.channels.fetch(channelId);
+                if (channel && channel.isTextBased()) {
+                    await channel.send({ embeds: [joinEmbed] });
+                }
+            } catch (err) {
+                console.error(`Error sending join message to channel ${channelId}:`, err);
             }
         }
     } catch (error) {
