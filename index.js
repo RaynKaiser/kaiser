@@ -327,8 +327,9 @@ client.on(Events.GuildMemberAdd, async member => {
     try {
         if (typeof writeLog === 'function') writeLog(`[JOIN] 📥 ${member.user.username} joined the server.`, false);
         
-        if (process.env.LOG_CHANNEL_ID) {
-            const channel = await client.channels.fetch(process.env.LOG_CHANNEL_ID);
+        const welcomeChannelId = process.env.WELCOME_CHANNEL_ID || process.env.LOG_CHANNEL_ID;
+        if (welcomeChannelId) {
+            const channel = await client.channels.fetch(welcomeChannelId);
             if (channel && channel.isTextBased()) {
                 const welcomeCard = new canvacord.Welcomer()
                     .setUsername(member.user.username)
