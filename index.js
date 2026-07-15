@@ -2,7 +2,6 @@ const { Client, GatewayIntentBits, Events, ActionRowBuilder, ButtonBuilder, Butt
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
-const canvacord = require('canvacord');
 require('dotenv').config();
 
 // Dummy HTTP server for Render (Render requires Web Services to bind to a port)
@@ -331,28 +330,18 @@ client.on(Events.GuildMemberAdd, async member => {
         if (welcomeChannelId) {
             const channel = await client.channels.fetch(welcomeChannelId);
             if (channel && channel.isTextBased()) {
-                const welcomeCard = new canvacord.Welcomer()
-                    .setUsername(member.user.username)
-                    .setDiscriminator(member.user.discriminator || '0000')
-                    .setMemberCount(member.guild.memberCount)
-                    .setGuildName(member.guild.name)
-                    .setAvatar(member.user.displayAvatarURL({ extension: 'png', forceStatic: true, size: 1024 }));
-
-                const welcomeImageBuffer = await welcomeCard.build();
-                const welcomeAttachment = new AttachmentBuilder(welcomeImageBuffer, { name: 'welcome.png' });
-
                 const joinEmbed = new EmbedBuilder()
                     .setColor('#2ECC71')
                     .setAuthor({ name: `${member.user.displayName} joined the server!`, iconURL: member.user.displayAvatarURL({ dynamic: true }) })
                     .setDescription(`Welcome **${member.user.username}** ( <@${member.user.id}> ) to the server!`)
-                    .setImage('attachment://welcome.png')
+                    .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 512 }))
                     .addFields(
                         { name: '📅 Account Created', value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`, inline: true },
-                        { name: '👥 Member Count', value: `We now have **${member.guild.memberCount}** members.`, inline: true }
+                        { name: '🫂 Member Count', value: `We now have **${member.guild.memberCount}** members.`, inline: true }
                     )
                     .setTimestamp();
                 
-                await channel.send({ embeds: [joinEmbed], files: [welcomeAttachment] });
+                await channel.send({ embeds: [joinEmbed] });
             }
         }
     } catch (error) {
